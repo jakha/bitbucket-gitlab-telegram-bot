@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  app:
+    image: zb_pr_tlgm_nf_node
+    container_name: zb_pr_tlgm_nf_node_1
+    build:
+      context: docker
+      dockerfile: node.Dockerfile
+      args:
+        CURRENT_USER: 1000
+    tty: true
+    ports:
+      - 3000:3000
+    volumes:
+      - ./:/var/www
+    command: sh -c "nodemon app.js"

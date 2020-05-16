@@ -1,0 +1,15 @@
+{
+    "name": "zbPrTmNotify",
+    "version": "1.0.0",
+    "description": "Notifying about merge/pull requests by enevent",
+    "author": "Jahangir <jaha@ereshov.ru>",
+    "license": "MIT",
+    "main": "app.js",
+    "keywords": [
+        "nodejs",
+        "koa"
+    ],
+    "dependencies": {
+        "koa": "^2.11.0"
+    }
+}
