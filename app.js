@@ -19,14 +19,26 @@ const logger = Winston.createLogger({
   ],
 });
 
+
+
 const TlgApiHost = 'api.telegram.org'
 const botMessageRegex = /\[\[\[.+?\]\]\]/g
 
 app.use(bodyparser);
 
+
+
 function sendMsgTlg(msg, config)
-{     
-    const endpoint = '/' + getIdentifier(config) + '/sendMessage?chat_id=' + Config.parsed.TELEGRAM_CHATS_IDS 
+{
+    let chats = config.TELEGRAM_CHATS_IDS.split(',');
+
+    for (const key in chats) {
+       sendTo(msg, chats[key], config);
+    }
+}
+
+function sendTo(msg, to, config){
+    const endpoint = '/' + getIdentifier(config) + '/sendMessage?chat_id=' + to 
     + '&text=' + encodeURIComponent(msg);    
 
     Shttps.get(getOptions(endpoint, config), function(res) {
@@ -52,7 +64,7 @@ function getOptions(path, config){
         socksPort: config.SOCKS_PORT,
         socksUsername: config.SOCKS_USERNAME,
         socksPassword: config.SOCKS_PASSWORD,
-    }
+    };
 }
 
 function isAuth(token, config)
@@ -65,15 +77,21 @@ function getToken(ctx)
     return ctx.header['x-gitlab-token'];
 }
 
-function extractStringForBot(string)
-{   
-    if(string === '') {
+function extractStringForBot(data)
+{
+    if(data === '') {
+        return '';
+    }
+
+    dataMatch = data.match(botMessageRegex);
+
+    if(dataMatch === null){
         return '';
     }
     
-    let array = [...string.match(botMessageRegex)];
+    let msgArr = [...dataMatch];
 
-    return array.map( value => {
+    return msgArr.map( value => {
         return value.substr(3, value.length - 6);
     }).join('\n');
 }
@@ -104,16 +122,16 @@ function implodeMsg(data) {
     + 'Проект: ' + data.project + '\n';
 }
 
-
 app.use(async (ctx, next) => {
     ! isAuth(getToken(ctx),Config) && ctx.throw(401);
     next();
 });
 
-router.get('/merge_request', (ctx, next) => {
-   let data = extractData(ctx.request.body);
-   sendMsgTlg(implodeMsg(data), Config.parsed);
-   next()
+router.get('/node/merge_request', (ctx, next) => {
+    let data = extractData(ctx.request.body);
+    sendMsgTlg(implodeMsg(data), Config.parsed);
+    ctx.status = 200;
+    next();
 });
 
 app
