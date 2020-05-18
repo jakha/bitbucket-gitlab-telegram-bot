@@ -11,7 +11,7 @@ services:
         CURRENT_USER: 1000
     tty: true
     ports:
-      - 3000:3000
+      - 3003:3000
     volumes:
       - ./:/var/www
     command: sh -c "nodemon app.js"
