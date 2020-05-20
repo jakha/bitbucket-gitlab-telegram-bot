@@ -3,8 +3,14 @@ const Crypto = require('crypto');
 const Config = require('dotenv').config();
 const Router = require('koa-router');
 const BodyParser = require('koa-bodyparser');
-const Shttps = require('socks5-https-client');
 const Winston = require('winston');
+const ChatRoutes = require('./project-chat-route.json');
+const TelegramService = require('./src/TelegramService.js')
+const Shttps = require('socks5-https-client');
+
+
+const GITLAB_MR_EVENT = 'Merge Request Hook';
+const BITBUCKET_PR_EVENT = 'pullrequest: created';
 
 const app = new Koa();
 const router = new Router();
@@ -19,57 +25,21 @@ const logger = Winston.createLogger({
   ],
 });
 
-
-
-const TlgApiHost = 'api.telegram.org'
-const botMessageRegex = /\[\[\[.+?\]\]\]/g
+const telegramService = new TelegramService(Config.parsed, ChatRoutes, Shttps)
 
 app.use(bodyparser);
 
-
-
-function sendMsgTlg(msg, config)
+function isAuth(ctx, config)
 {
-    let chats = config.TELEGRAM_CHATS_IDS.split(',');
-
-    for (const key in chats) {
-       sendTo(msg, chats[key], config);
-    }
+    ctx.from = GITLAB_MR_EVENT;
+    return GITLAB_MR_EVENT === ctx.headers['x-gitlab-event'] && getToken(ctx) === config.SECRET_KEY;
 }
 
-function sendTo(msg, to, config){
-    const endpoint = '/' + getIdentifier(config) + '/sendMessage?chat_id=' + to 
-    + '&text=' + encodeURIComponent(msg);    
-
-    Shttps.get(getOptions(endpoint, config), function(res) {
-        res.setEncoding('utf8');
-        res.on('readable', function() {
-            logger.info(res.read());
-        });
-    });
-}
-
-function getUpdatesTlg(config){
-    const endpoint = host + '/' + getIdentifier(Config) + '/getUpdates';
-    Https.get(getOptions(endpoint, config), res => {
-        console.log(res.headers);
-    });
-}
-
-function getOptions(path, config){
-    return {
-        hostname: TlgApiHost,
-        path: path,
-        socksHost: config.SOCKS_HOST,
-        socksPort: config.SOCKS_PORT,
-        socksUsername: config.SOCKS_USERNAME,
-        socksPassword: config.SOCKS_PASSWORD,
-    };
-}
-
-function isAuth(token, config)
+function inWhiteList(ctx, config)
 {
-    return token === config.parsed.SECRET_KEY;
+    ctx.from = BITBUCKET_PR_EVENT;
+    let whiteIps = config.WHITE_LIST.split(',');
+    return whiteIps.indexOf(ctx.headers['x-real-ip']) > -1;
 }
 
 function getToken(ctx)
@@ -77,59 +47,16 @@ function getToken(ctx)
     return ctx.header['x-gitlab-token'];
 }
 
-function extractStringForBot(data)
-{
-    if(data === '') {
-        return '';
-    }
-
-    dataMatch = data.match(botMessageRegex);
-
-    if(dataMatch === null){
-        return '';
-    }
-    
-    let msgArr = [...dataMatch];
-
-    return msgArr.map( value => {
-        return value.substr(3, value.length - 6);
-    }).join('\n');
-}
-
-function getIdentifier(config)
-{
-    return 'bot' + config.TELEGRAM_BOT_ID;
-}
-
-function extractData(body){
-    return {
-        'user': body.user.name,
-        'project': body.project.name,
-        'description': extractStringForBot(body.object_attributes.description),
-        'metainfo': extractStringForBot(body.project.description),
-        'url': body.object_attributes.url,
-        'sourse':body.object_attributes.source_branch,
-        'target':body.object_attributes.target_branch,
-        'WIP': body.object_attributes.work_in_progress
-    };
-}
-
-function implodeMsg(data) {
-    return data.metainfo + '\n\n'
-    + data.description + '\n\n'
-    + data.url + '\n\n'
-    + 'Пользователь: ' + data.user + '\n'
-    + 'Проект: ' + data.project + '\n';
-}
-
 app.use(async (ctx, next) => {
-    ! isAuth(getToken(ctx),Config) && ctx.throw(401);
+    let config = Config.parsed;
+    if(!inWhiteList(ctx, config) && !isAuth(ctx, config)){
+        ctx.throw(401);
+    }
     next();
 });
 
-router.get('/node/merge_request', (ctx, next) => {
-    let data = extractData(ctx.request.body);
-    sendMsgTlg(implodeMsg(data), Config.parsed);
+router.get('/node/merge_request', (ctx, next) => {    
+    telegramService.sendMsgTlg(ctx);
     ctx.status = 200;
     next();
 });

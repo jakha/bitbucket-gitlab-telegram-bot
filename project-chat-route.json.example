@@ -1,0 +1,5 @@
+{
+    "lab:<project_id>":["<chat_id>"],
+    "bucket:<project_uuid>":["<chat_id>"],
+    "default":["<chat_id>"]  
+}
