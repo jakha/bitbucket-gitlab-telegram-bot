@@ -8,4 +8,6 @@ Fill .env file and project-chat-route.json before you will run command
 - Run command from app root directory.
 ```shell script
     docker-compose up
+
+    docker-compose exec app npm i
 ```
