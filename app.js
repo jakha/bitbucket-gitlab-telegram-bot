@@ -10,7 +10,7 @@ const Shttps = require('socks5-https-client');
 
 
 const GITLAB_MR_EVENT = 'Merge Request Hook';
-const BITBUCKET_PR_EVENT = 'pullrequest: created';
+const BITBUCKET_PR_EVENT = 'pr:opened';
 
 const app = new Koa();
 const router = new Router();
@@ -25,7 +25,7 @@ const logger = Winston.createLogger({
   ],
 });
 
-const telegramService = new TelegramService(Config.parsed, ChatRoutes, Shttps)
+const telegramService = new TelegramService(Config.parsed, ChatRoutes, Shttps, logger);
 
 app.use(bodyparser);
 
@@ -39,7 +39,7 @@ function inWhiteList(ctx, config)
 {
     ctx.from = BITBUCKET_PR_EVENT;
     let whiteIps = config.IP_WHITE_LIST.split(',');
-    return whiteIps.indexOf(ctx.headers['x-real-ip']) > -1;
+    return whiteIps.indexOf(ctx.headers['x-real-ip']) > -1 && BITBUCKET_PR_EVENT === ctx.headers['x-event-key'];
 }
 
 function getToken(ctx)
@@ -47,15 +47,28 @@ function getToken(ctx)
     return ctx.header['x-gitlab-token'];
 }
 
-app.use(async (ctx, next) => {
+app.use(async (ctx, next) => {    
     let config = Config.parsed;
+
+    if(ctx.headers['x-event-key'] === 'diagnostics:ping'){
+        ctx.status = 200;
+        return;
+    }
+
     if(!inWhiteList(ctx, config) && !isAuth(ctx, config)){
         ctx.throw(401);
     }
+
     next();
 });
 
-router.get('/node/merge_request', (ctx, next) => {    
+router.post('/node/merge_request', (ctx, next) => {
+    telegramService.sendMsgTlg(ctx);
+    ctx.status = 200;
+    next();
+});
+
+router.get('/node/merge_request', (ctx, next) => {
     telegramService.sendMsgTlg(ctx);
     ctx.status = 200;
     next();

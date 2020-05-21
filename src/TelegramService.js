@@ -1,15 +1,22 @@
 class TelegramService {
-    constructor(config, routes, shttpClient) {
+    constructor(config, routes, shttpClient, logger) {
         this.config = config;
         this.chatRoutes = routes;
         this.shttpClient = shttpClient;
+        this.logger = logger
     }
 
     sendMsgTlg(ctx){
+
+        if(cantToSend(ctx)){
+            return;
+        }
+
         let msg = implodeMsg(extractData(ctx));
-        let chats = getChats(ctx, this.chatRoutes);
+        let chats = getChats(ctx, this.chatRoutes);   
+                
         for (const key in chats) {
-            sendTo(msg, chats[key], this.config, this.shttpClient);
+            sendTo(msg, chats[key], this.config, this.shttpClient, this.logger);
         }
     }
 
@@ -24,13 +31,24 @@ class TelegramService {
 
 
 const GITLAB_MR_EVENT = 'Merge Request Hook';
-const BITBUCKET_PR_EVENT = 'pullrequest: created';
+const BITBUCKET_PR_EVENT = 'pr:opened';
+const GITLAB_MERGE_REQUEST_STATUS = 'unchecked';
 
 const TlgApiHost = 'api.telegram.org'
 const botMessageRegex = /\[\[\[.+?\]\]\]/g
 
 
-function sendTo(msg, to, config, client){
+function cantToSend (ctx){
+    if(ctx.from === GITLAB_MR_EVENT && 
+        ctx.request.body.object_attributes.merge_status !== GITLAB_MERGE_REQUEST_STATUS){
+            return true;
+    }
+
+    return false
+}
+
+
+function sendTo(msg, to, config, client, logger){
     const endpoint = '/' + getIdentifier(config) + '/sendMessage?chat_id=' + to 
     + '&text=' + encodeURIComponent(msg);    
     
@@ -56,7 +74,7 @@ function formIdent(ctx){
         case GITLAB_MR_EVENT:
             return 'lab:' + ctx.request.body.project.id;
         case BITBUCKET_PR_EVENT: 
-            return  'bucket:' + ctx.request.body.repository.uuid;
+            return  'bucket:' + ctx.request.body.pullRequest.fromRef.repository.project.id
     };
 }
 
@@ -85,7 +103,7 @@ function getIdentifier(config)
 }
 
 function extractData(ctx){
-    let body = ctx.request.body;
+    let body = ctx.request.body;    
     switch (ctx.from) {
         case GITLAB_MR_EVENT:
             return  {
@@ -99,13 +117,13 @@ function extractData(ctx){
             };
         case BITBUCKET_PR_EVENT:
             return  {
-                'user': body.pullrequest.author.display_name,
-                'project': body.repository.project.name,
-                'description': extractStringForBot(body.pullrequest.description),
-                'metainfo': '',
-                'url': body.pullrequest.links.html.href,
-                'sourse':body.pullrequest.source.branch.name,
-                'target':body.pullrequest.destination.branch.name,
+                'user': body.actor.displayName,
+                'project': body.pullRequest.fromRef.repository.project.name,
+                'description': extractStringForBot(body.pullRequest.description),
+                'metainfo': extractStringForBot(body.pullRequest.fromRef.repository.project.description),
+                'url': body.pullRequest.links.self[0].href,
+                'sourse':body.pullRequest.fromRef.displayId,
+                'target':body.pullRequest.toRef.displayId,
             };
     };
 }
