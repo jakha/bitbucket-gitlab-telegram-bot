@@ -38,7 +38,7 @@ function isAuth(ctx, config)
 function inWhiteList(ctx, config)
 {
     ctx.from = BITBUCKET_PR_EVENT;
-    let whiteIps = config.WHITE_LIST.split(',');
+    let whiteIps = config.IP_WHITE_LIST.split(',');
     return whiteIps.indexOf(ctx.headers['x-real-ip']) > -1;
 }
 
