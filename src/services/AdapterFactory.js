@@ -1,14 +1,26 @@
 import Maps from '../maps.json';
 
-
-export async function getAdapter (mapKeyName) {
-    return class Adapter {
-	constructor (map) {
-	    this.map = map
+class Adapter {
+    constructor (map) {
+	this.map = map
+    }
+    
+    adapt (body) {
+	let data = Object.create(null);
+	for(let field in this.map){
+	    data[field] = getValue(body, this.map[field]); 
 	}
 
-	async adapt (ctx) {
-
-	}
+	return data;
     }
 }
+
+function getValue(object, path) {
+    return path.split('.').reduce((target, v) => target = target[v], object);
+}
+
+export async function getAdapter (mapKeyName) {
+    return new Adapter(Maps[mapKeyName]);
+}
+
+

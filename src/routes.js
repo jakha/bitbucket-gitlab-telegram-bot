@@ -3,6 +3,8 @@ import Config from 'dotenv';
 import {gitLabAuthorize} from './auth.js';
 import * as GitlabController from './controllers/GitlabController.js';
 
+
+
 const config = Config.config().parsed;
 const gitlabRoutes = new Router();
 
