@@ -1,0 +1,20 @@
+{
+    "gitlab_mr_v13": {
+        "user": "body.user.name",
+        "project": "body.project.name",
+        "description": "body.object_attributes.description",
+        "metainfo": "body.project.description",
+        "url": "body.object_attributes.url",
+        "sourse": "body.object_attributes.source_branch",
+        "target": "body.object_attributes.target_branch"
+    },
+    "bitbucket_pr_v" : {
+	"user": "body.actor.displayName",
+        "project": "body.pullRequest.fromRef.repository.project.name",
+        "description": "body.pullRequest.description",
+        "metainfo": "body.pullRequest.fromRef.repository.project.description",
+        "url": "body.pullRequest.links.self[0].href",
+        "sourse": "body.pullRequest.fromRef.displayId",
+        "target": "body.pullRequest.toRef.displayId"
+    }
+}

@@ -3,7 +3,7 @@ class TelegramService {
         this.config = config;
         this.chatRoutes = routes;
         this.shttpClient = shttpClient;
-        this.logger = logger
+        this.logger = logger;
     }
 
     sendMsgTlg(ctx){
@@ -30,12 +30,9 @@ class TelegramService {
 
 
 
-const GITLAB_MR_EVENT = 'Merge Request Hook';
-const BITBUCKET_PR_EVENT = 'pr:opened';
-const GITLAB_MERGE_REQUEST_STATUS = 'unchecked';
 
-const TlgApiHost = 'api.telegram.org'
-const botMessageRegex = /\[\[\[.+?\]\]\]/g
+
+const botMessageRegex = /\[\[\[.+?\]\]\]/g;
 
 
 function cantToSend (ctx){
@@ -44,13 +41,13 @@ function cantToSend (ctx){
             return true;
     }
 
-    return false
+    return false;
 }
 
 
 function sendTo(msg, to, config, client, logger){
     const endpoint = '/' + getIdentifier(config) + '/sendMessage?chat_id=' + to 
-    + '&text=' + encodeURIComponent(msg);    
+    + '&text=' + encodeURIComponent(msg) + '&disable_web_page_preview=true';    
     
     client.get(getOptions(endpoint, config), function(res) {
         res.setEncoding('utf8');
@@ -107,23 +104,10 @@ function extractData(ctx){
     switch (ctx.from) {
         case GITLAB_MR_EVENT:
             return  {
-                'user': body.user.name,
-                'project': body.project.name,
-                'description': extractStringForBot(body.object_attributes.description),
-                'metainfo': extractStringForBot(body.project.description),
-                'url': body.object_attributes.url,
-                'sourse':body.object_attributes.source_branch,
-                'target':body.object_attributes.target_branch,
             };
         case BITBUCKET_PR_EVENT:
             return  {
-                'user': body.actor.displayName,
-                'project': body.pullRequest.fromRef.repository.project.name,
-                'description': extractStringForBot(body.pullRequest.description),
-                'metainfo': extractStringForBot(body.pullRequest.fromRef.repository.project.description),
-                'url': body.pullRequest.links.self[0].href,
-                'sourse':body.pullRequest.fromRef.displayId,
-                'target':body.pullRequest.toRef.displayId,
+             
             };
     };
 }
